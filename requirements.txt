@@ -1,0 +1,9 @@
+open3d
+imageio
+opencv-python
+tqdm
+plyfile
+torch==2.0.1
+
+# --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-201_cu118.html
+# kaolin==0.17.0
