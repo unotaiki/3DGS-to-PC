@@ -86,13 +86,29 @@ def generate_mesh(points, colours, normals, output_path, depth=12, laplacian_ite
 
     o3d.io.write_triangle_mesh(output_path, mesh)
 
-def clean_point_cloud(points, colours, normals, std_ratio=10, device="cuda:0"):
+def clean_point_cloud(points, colours, normals, std_ratio=10, radious=0.05, nb_points=8, device="cuda:0"):
     point_cloud = convert_pytorch_to_o3d_pointcloud(points, colours, normals)
     
-    point_cloud, _ = point_cloud.remove_statistical_outlier(nb_neighbors=20, std_ratio=std_ratio)
+    # point_cloud, _ = point_cloud.remove_statistical_outlier(nb_neighbors=20, std_ratio=std_ratio)
+    point_cloud, _ = point_cloud.remove_radius_outlier(nb_points=5, radius=radious)
 
     return convert_o3d_to_pytorch_pointcloud(point_cloud)
 
+def clop_point_cloud(points, colours, normals, 
+                     range_xy=10.0,
+                     device="cuda:0"):
+    
+    import open3d as o3d
 
+    point_cloud = convert_pytorch_to_o3d_pointcloud(points, colours, normals)
+
+    eps = 1e-6
+    range_xy = range_xy - eps
+    min_bound = [-range_xy, -range_xy, -np.inf]
+    max_bound = [+range_xy, +range_xy, 0]
+    bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+    cropped_pcd = point_cloud.crop(bbox)
+
+    return convert_o3d_to_pytorch_pointcloud(cropped_pcd)
 
 

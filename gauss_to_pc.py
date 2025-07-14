@@ -137,7 +137,7 @@ def calculate_bin_sizes(points_per_gaussian):
 
     return start_bin, bin_size
 
-def sample_from_multivariate_normal(means, covariances, num_points_to_sample, max_num_gen_attempts=3, epsilon=1e-6):
+def sample_from_multivariate_normal(means, covariances, num_points_to_sample, max_num_gen_attempts=3, epsilon=1e-3):
     """
     Attempts to sample 'num_points_to_sample' for each provided Gaussian based on its mean and covariance. 
     If an error occurs, it is assumed that a Gaussian is not positive semi-definite, and thus a strong regularisaion approach is used to fix this
@@ -618,6 +618,7 @@ def config_parser():
     parser.add_argument("--visibility_threshold", type=float, default=0.05, help="Minimum contribution each Gaussian must have to be included in the final point cloud generation (larger value = less noise)")
     parser.add_argument("--surface_distance_std", type=float, default=None, help="Cull Gaussians that are a minimum of X standard deviations away from the scene surfaces (smaller value = less noise)")
     parser.add_argument("--clean_pointcloud", action="store_true", help="Set to remove outliers on the point cloud after generation (requires Open3D)")
+    parser.add_argument("--clop_pointcloud", action="store_true", help="remove points clouds out of the range xy plane")
     
     parser.add_argument("--generate_mesh", action="store_true", help="Set to also generate a mesh based on the created point cloud (requires Open3D)")
     parser.add_argument("--poisson_depth", default=10, type=int, help="The depth used in the poisson surface reconstruction algorithm that is used for meshing (larger value = more quality) ")
@@ -755,6 +756,26 @@ def main():
             points = cleaned_points,
             colours = cleaned_colours,
             normals = cleaned_normals
+        )
+
+
+    if args.clop_pointcloud:
+        RANGE = 10.0
+
+        if not args.quiet:
+            print("Clopping Point Cloud by xy plane")
+            print(f"the range : [{-RANGE}, {RANGE}]x[{-RANGE}, {RANGE}]")
+            print()
+
+        from mesh_handler import clop_point_cloud
+
+        clopped_points, clopped_colours, clopped_normals = clop_point_cloud(total_point_cloud.points, total_point_cloud.colours, total_point_cloud.normals, 
+                                                                            device=pointcloud_settings.device, range_xy=RANGE)
+
+        total_point_cloud = PointCloudData(
+            points = clopped_points,
+            colours = clopped_colours,
+            normals = clopped_normals
         )
 
     if not args.quiet:

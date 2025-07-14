@@ -10,11 +10,30 @@ import kaolin
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
+
 def load_ply(file_path):
     """Loads a PLY file and returns the points as a numpy array."""
     plydata = PlyData.read(file_path)
     points = np.vstack([plydata['vertex']['x'], plydata['vertex']['y'], plydata['vertex']['z']]).T
     return points
+
+
+def eval_chamfer_distance(pcd, pcd_name, gt_file='../eval_ply/gt/points3d.ply'):
+
+    gt = load_ply(gt_file)
+
+    pcd = pcd.poitns
+
+    # Initialize the Chamfer distance function
+    chamfer_distance = kaolin.metrics.pointcloud.chamfer_distance(gt, pcd, w1=1.0, w2=1.0, squared=True) # if squared=False, use euclidean distance
+    print(f"Chamfer distance of {pcd_name}: {chamfer_distance}")
+
+    RADIOUS = 0.10
+    f1_score = kaolin.metrics.pointcloud.f_score(pcd, gt, radius=RADIOUS, eps=1e-08)
+    print(f"F1_score = {f1_score}")
+
+
+
 
 def main():
     """Main function to evaluate the Chamfer distance between two point clouds."""

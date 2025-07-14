@@ -30,8 +30,11 @@ def chamfer_distance(pcd1, pcd2, squared=True):
                            M the number of points, D the dimension.
 
     Returns:
-        torch.Tensor: The Chamfer Distance for each item in the batch, shape [B].
+        torch.Tensor: The Chamfer Distance. single schlar
+        torch.Tensor: min distance from any p1 point to p2 [N]
+        torch.Tensor: min distance from any p2 point to p1 [M]
     """    
+    
 
 def main():
     """Main function to evaluate the Chamfer distance between two point clouds."""

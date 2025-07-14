@@ -4,6 +4,7 @@ opencv-python
 tqdm
 plyfile
 torch==2.0.1
+torchvision
 
-# --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-201_cu118.html
+# --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.0.1_cu118.html
 # kaolin==0.17.0
