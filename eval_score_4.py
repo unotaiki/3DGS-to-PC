@@ -1,3 +1,5 @@
+from datetime import date
+import datetime
 import torch
 import numpy as np
 from plyfile import PlyData
@@ -21,6 +23,50 @@ def load_ply(file_path):
     except Exception as e:
         print(f"Error loading PLY file {file_path}: {e}", file=sys.stderr)
         return None
+
+
+def calculate_f_score_metrics(pred_pcd, gt_pcd, radius, eps=1e-8):
+    """
+    Calculates F1-score, Precision, and Recall based on MVS benchmark definitions.
+
+    - Precision = |P_rec| / |P| (Fraction of predicted points close to GT)
+    - Recall    = |G_hit| / |G| (Fraction of GT points close to prediction)
+
+    Args:
+        pred_pcd (torch.Tensor): Predicted point cloud, shape (B, N, 3).
+        gt_pcd (torch.Tensor): Ground truth point cloud, shape (B, M, 3).
+        radius (float): The distance threshold (d_th).
+        eps (float): A small value to prevent division by zero.
+
+    Returns:
+        tuple: (f1, precision, recall) as Python floats.
+    """
+    # sided_distance は二乗距離を返すため、半径も二乗して比較
+    radius_squared = radius ** 2
+
+    # 1. Precisionの計算
+    # P_rec: 予測点群(P)のうち、正解(GT)から半径以内にある点の数
+    dist_p_to_g, _ = kaolin.metrics.pointcloud.sided_distance(pred_pcd, gt_pcd)
+    p_rec = torch.sum(dist_p_to_g < radius_squared).item()
+    # |P|: 全ての予測点の数
+    num_predicted_points = pred_pcd.shape[1]
+    
+    precision = float(p_rec) / float(num_predicted_points + eps)
+
+    # 2. Recallの計算
+    # G_hit: 正解点群(G)のうち、予測(P)から半径以内にある点の数
+    dist_g_to_p, _ = kaolin.metrics.pointcloud.sided_distance(gt_pcd, pred_pcd)
+    g_hit = torch.sum(dist_g_to_p < radius_squared).item()
+    # |G|: 全ての正解点の数
+    num_gt_points = gt_pcd.shape[1]
+
+    recall = float(g_hit) / float(num_gt_points + eps)
+
+    # 3. F1-Scoreの計算
+    f1 = 2.0 * (precision * recall) / (precision + recall + eps)
+    
+    return f1, precision, recall
+
 
 def main(args):
     """
@@ -70,21 +116,15 @@ def main(args):
         for radius in args.radii:
             try:
                 # ★★★ 新しく実装した関数を呼び出す ★★★
-                f1_tensor, precision_tensor, recall_tensor = fscore.fscore(
-                    pred_pcd_tensor, gt_pcd_tensor, radius**2
+                f1_val, precision_val, recall_val = calculate_f_score_metrics(
+                    pred_pcd_tensor, gt_pcd_tensor, radius=radius
                 )
-                
-                # .item() を使ってそれぞれ数値に変換する
-                f1_val = f1_tensor.mean().item()
-                precision_val = precision_tensor.mean().item()
-                recall_val = recall_tensor.mean().item()
 
                 f1_scores_results[f'radius_{radius}'] = {
                     'f1_score': f1_val,
                     'precision': precision_val,
                     'recall': recall_val
                 }
-                # 数値に変換したので、f-stringでのフォーマットが正しく機能する
                 print(f"  Metrics for Radius {radius}:")
                 print(f"    F1-Score:  {f1_val:.6f}")
                 print(f"    Precision: {precision_val:.6f}")
@@ -129,11 +169,12 @@ if __name__ == '__main__':
         help='Ending index for the evaluation folders.'
     )
     parser.add_argument(
-        '--radii', type=float, nargs='+', default=[0.05, 0.15, 0.30],
+        '--radii', type=float, nargs='+', default=[0.10, 0.15, 0.30],
         help='A list of radii to use for F-score calculation.'
     )
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     parser.add_argument(
-        '--output_json', type=str, default='evaluation_results.json',
+        '--output_json', type=str, default=f'{current_time}_evaluation_results.json',
         help='File path to save the JSON results.'
     )
 
